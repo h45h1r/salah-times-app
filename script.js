@@ -730,8 +730,8 @@ function showNotification(title, body, options = {}) {
 
     const defaultOptions = {
         body: body,
-        icon: '/favicon.ico', // Use favicon as fallback
-        badge: '/favicon.ico',
+        icon: './icon-192x192.png', // Use the PWA icon
+        badge: './icon-192x192.png',
         tag: 'salah-notification',
         requireInteraction: false,
         silent: !notificationSettings.sound,
@@ -975,7 +975,7 @@ function init() {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/pwabuilder-sw.js')
+    navigator.serviceWorker.register('./pwabuilder-sw.js')
       .then(reg => console.log('Service Worker registered:', reg.scope))
       .catch(err => console.error('Service Worker registration failed:', err));
   });
