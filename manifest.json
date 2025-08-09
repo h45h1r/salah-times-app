@@ -1,0 +1,22 @@
+{
+  "name": "Salah Times App",
+  "short_name": "Salah Times",
+  "description": "A beautiful Islamic prayer times application with Quran ayahs",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#151515",
+  "theme_color": "#00bcd4",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/00bcd4/ffffff?text=🕌",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/00bcd4/ffffff?text=🕌",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
