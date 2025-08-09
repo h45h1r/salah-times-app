@@ -3,7 +3,11 @@ console.log('Script.js loaded and running...');
 // Test if button exists immediately
 console.log('Button exists immediately?', !!document.getElementById('notificationBtn'));
 
-const apiKey = 'cde641ff-cdde-4d25-8a62-4ec8cabc7f57'; // Replace with your API key
+// Use configuration from config.js
+const API_KEYS = {
+    londonPrayerTimes: CONFIG.londonPrayerTimes.apiKey,
+    // Add more API keys here as needed
+};
 let currentDate = new Date();
 let selectedDate = new Date();
 
@@ -218,8 +222,7 @@ async function fetchTodaysPrayerTimesForNextPrayer() {
     const year = today.getFullYear();
     const formattedDate = `${year}-${month}-${day}`;
 
-    const apiKey = 'cde641ff-cdde-4d25-8a62-4ec8cabc7f57';
-    const url = `https://www.londonprayertimes.com/api/times/?format=json&key=${apiKey}&date=${formattedDate}&24hours=true`;
+    const url = `https://www.londonprayertimes.com/api/times/?format=json&key=${API_KEYS.londonPrayerTimes}&date=${formattedDate}&24hours=true`;
 
     try {
         const response = await fetch(url);
@@ -258,7 +261,7 @@ async function fetchPrayerTimes(date) {
     const apis = [
         {
             name: 'London Prayer Times',
-            url: `https://www.londonprayertimes.com/api/times/?format=json&key=cde641ff-cdde-4d25-8a62-4ec8cabc7f57&date=${formattedDate}&24hours=true`,
+            url: `https://www.londonprayertimes.com/api/times/?format=json&key=${API_KEYS.londonPrayerTimes}&date=${formattedDate}&24hours=true`,
             transform: (data) => ({
                 fajr: data.fajr,
                 dhuhr: data.dhuhr,
