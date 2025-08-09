@@ -2,6 +2,15 @@ const apiKey = 'cde641ff-cdde-4d25-8a62-4ec8cabc7f57'; // Replace with your API 
 let currentDate = new Date();
 let selectedDate = new Date();
 
+// Notification variables
+let notificationPermission = 'default';
+let notificationSettings = {
+    enabled: false,
+    advanceMinutes: 5, // Notify 5 minutes before prayer
+    sound: true,
+    vibration: true
+};
+
 // DOM Elements
 const nextPrayerName = document.getElementById('next-prayer-name');
 const countdownTimer = document.getElementById('countdown-timer');
@@ -18,9 +27,10 @@ const prayerTimes = {
     isha: document.getElementById('isha-time')
 };
 
-// Sunrise/Tahajjud elements
+// Sunrise/Tahajjud/Last Third elements
 const sunriseTimeElement = document.getElementById('sunrise-time');
 const tahajjudTimeElement = document.getElementById('tahajjud-time');
+const lastThirdTimeElement = document.getElementById('last-third-time');
 const sunriseTahajjudCard = document.getElementById('sunriseTahajjudCard');
 
 // Prayer cards
@@ -35,6 +45,9 @@ const prayerCards = {
 // Add today button functionality
 const todayBtn = document.getElementById('todayBtn');
 
+// Add notification button functionality
+const notificationBtn = document.getElementById('notificationBtn');
+
 // Function to update today button visibility
 function updateTodayButtonVisibility() {
     const today = new Date();
@@ -44,6 +57,37 @@ function updateTodayButtonVisibility() {
         todayBtn.classList.remove('hidden');
     }
 }
+
+// Function to update notification button state
+function updateNotificationButtonState() {
+    if (notificationSettings.enabled && notificationPermission === 'granted') {
+        notificationBtn.classList.add('enabled');
+        notificationBtn.innerHTML = '<i class="fas fa-bell"></i>';
+        notificationBtn.title = 'Notifications enabled';
+    } else {
+        notificationBtn.classList.remove('enabled');
+        notificationBtn.innerHTML = '<i class="fas fa-bell-slash"></i>';
+        notificationBtn.title = 'Enable notifications';
+    }
+}
+
+// Add click handler for notification button
+notificationBtn.addEventListener('click', async () => {
+    if (notificationSettings.enabled && notificationPermission === 'granted') {
+        // Disable notifications
+        notificationSettings.enabled = false;
+        updateNotificationButtonState();
+        saveNotificationSettings();
+        showNotification('Salah Times', 'Notifications disabled');
+    } else {
+        // Enable notifications
+        const granted = await requestNotificationPermission();
+        if (granted) {
+            updateNotificationButtonState();
+            saveNotificationSettings();
+        }
+    }
+});
 
 // Add click handler for today button
 todayBtn.addEventListener('click', () => {
@@ -133,6 +177,9 @@ async function fetchTodaysPrayerTimesForNextPrayer() {
 
             // Update only the next prayer box with today's data
             updateNextPrayer(todaysData);
+            
+            // Schedule notifications for today's prayers
+            schedulePrayerNotifications(todaysData);
         }
     } catch (error) {
         console.error('Error fetching today\'s prayer times for next prayer:', error);
@@ -196,6 +243,9 @@ async function fetchPrayerTimes(date) {
             if (isSameDay(selectedDate, today)) {
                 // If viewing today, update next prayer with current data
                 updateNextPrayer(formattedData);
+                
+                // Schedule notifications for today's prayers
+                schedulePrayerNotifications(formattedData);
             } else {
                 // If viewing another day, fetch today's data for next prayer box
                 fetchTodaysPrayerTimesForNextPrayer();
@@ -343,6 +393,36 @@ function calculateTahajjudTime(maghribTime, ishaTime, fajrTime) {
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
+// Calculate Last Third of the Night time (midnight time)
+function calculateLastThirdTime(maghribTime, fajrTime) {
+    // Convert both times to minutes from midnight
+    const maghribMinutes = convertToMinutes(maghribTime);
+    let fajrMinutes = convertToMinutes(fajrTime);
+    
+    // If Fajr is after midnight, add 24 hours to Maghrib if necessary
+    if (fajrMinutes <= maghribMinutes) {
+        fajrMinutes += 24 * 60;
+    }
+    
+    // Find total night duration = Fajr - Maghrib
+    const totalNightDuration = fajrMinutes - maghribMinutes;
+    
+    // Calculate last third start time = Maghrib + (2/3 * total night duration)
+    let lastThirdMinutes = maghribMinutes + (2/3 * totalNightDuration);
+    
+    // Handle day rollover for display
+    if (lastThirdMinutes >= 24 * 60) {
+        lastThirdMinutes -= 24 * 60;
+    }
+    
+    // Convert back to HH:MM format in 24-hour time, rounded to nearest minute
+    const roundedMinutes = Math.round(lastThirdMinutes);
+    const hours = Math.floor(roundedMinutes / 60);
+    const mins = roundedMinutes % 60;
+    
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
 // Update prayer times display
 function updatePrayerTimes(data) {
     // Reset all active states
@@ -355,7 +435,7 @@ function updatePrayerTimes(data) {
     prayerTimes.maghrib.textContent = ensureTimeFormat(data.maghrib);
     prayerTimes.isha.textContent = ensureTimeFormat(data.isha);
     
-    // Update sunrise using sunrise-sunset.org API and calculate tahajjud
+    // Update sunrise using sunrise-sunset.org API and calculate tahajjud and last third
     if (sunriseTimeElement) {
         fetchSunriseTime(selectedDate).then(sunriseTime => {
             sunriseTimeElement.textContent = sunriseTime;
@@ -365,6 +445,11 @@ function updatePrayerTimes(data) {
     if (data.maghrib && data.isha && data.fajr && tahajjudTimeElement) {
         const tahajjudTime = calculateTahajjudTime(data.maghrib, data.isha, data.fajr);
         tahajjudTimeElement.textContent = tahajjudTime;
+    }
+    
+    if (data.maghrib && data.fajr && lastThirdTimeElement) {
+        const lastThirdTime = calculateLastThirdTime(data.maghrib, data.fajr);
+        lastThirdTimeElement.textContent = lastThirdTime;
     }
 }
 
@@ -532,18 +617,198 @@ function isSameDay(date1, date2) {
            date1.getDate() === date2.getDate();
 }
 
-// Add flip animation for sunrise/tahajjud card
+// Notification Functions
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('This browser does not support notifications');
+        return false;
+    }
+
+    if (Notification.permission === 'granted') {
+        notificationPermission = 'granted';
+        notificationSettings.enabled = true;
+        return true;
+    }
+
+    if (Notification.permission === 'denied') {
+        notificationPermission = 'denied';
+        notificationSettings.enabled = false;
+        return false;
+    }
+
+    // Request permission
+    try {
+        const permission = await Notification.requestPermission();
+        notificationPermission = permission;
+        notificationSettings.enabled = permission === 'granted';
+        
+        if (permission === 'granted') {
+            console.log('Notification permission granted');
+            showNotification('Salah Times', 'Notifications enabled! You will be notified before each prayer time.');
+            updateNotificationButtonState();
+        } else {
+            console.log('Notification permission denied');
+        }
+        
+        return permission === 'granted';
+    } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        return false;
+    }
+}
+
+function showNotification(title, body, options = {}) {
+    if (!notificationSettings.enabled || notificationPermission !== 'granted') {
+        return;
+    }
+
+    const defaultOptions = {
+        body: body,
+        icon: '/favicon.ico', // Use favicon as fallback
+        badge: '/favicon.ico',
+        tag: 'salah-notification',
+        requireInteraction: false,
+        silent: !notificationSettings.sound,
+        vibrate: notificationSettings.vibration ? [200, 100, 200] : undefined,
+        data: {
+            url: window.location.href
+        }
+    };
+
+    const notificationOptions = { ...defaultOptions, ...options };
+
+    try {
+        const notification = new Notification(title, notificationOptions);
+        
+        // Handle notification click
+        notification.onclick = function() {
+            window.focus();
+            notification.close();
+        };
+
+        // Auto close after 10 seconds
+        setTimeout(() => {
+            notification.close();
+        }, 10000);
+
+        return notification;
+    } catch (error) {
+        console.error('Error showing notification:', error);
+    }
+}
+
+function schedulePrayerNotifications(prayerData) {
+    if (!notificationSettings.enabled) {
+        return;
+    }
+
+    const now = new Date();
+    const prayers = [
+        { name: 'Fajr', time: prayerData.fajr },
+        { name: 'Dhuhr', time: prayerData.dhuhr },
+        { name: 'Asr', time: prayerData.asr },
+        { name: 'Maghrib', time: prayerData.maghrib },
+        { name: 'Isha', time: prayerData.isha }
+    ];
+
+    prayers.forEach(prayer => {
+        const prayerTime = new Date();
+        const [hours, minutes] = prayer.time.split(':').map(Number);
+        prayerTime.setHours(hours, minutes, 0, 0);
+
+        // If prayer time is today and hasn't passed yet
+        if (prayerTime > now) {
+            const notificationTime = new Date(prayerTime.getTime() - (notificationSettings.advanceMinutes * 60 * 1000));
+            
+            // Only schedule if notification time is in the future
+            if (notificationTime > now) {
+                const timeUntilNotification = notificationTime.getTime() - now.getTime();
+                
+                setTimeout(() => {
+                    showNotification(
+                        `Prayer Time Reminder`,
+                        `${prayer.name} prayer is in ${notificationSettings.advanceMinutes} minutes`,
+                        {
+                            tag: `prayer-${prayer.name.toLowerCase()}`,
+                            requireInteraction: true
+                        }
+                    );
+                }, timeUntilNotification);
+
+                console.log(`Scheduled notification for ${prayer.name} at ${notificationTime.toLocaleTimeString()}`);
+            }
+        }
+    });
+}
+
+function checkAndRequestNotificationPermission() {
+    // Load saved notification settings
+    loadNotificationSettings();
+    
+    // Check if we should show the notification permission request
+    const hasRequestedBefore = localStorage.getItem('notificationPermissionRequested');
+    
+    if (!hasRequestedBefore && notificationPermission === 'default') {
+        // Show a custom prompt first
+        setTimeout(() => {
+            if (confirm('Would you like to receive notifications for prayer times?')) {
+                requestNotificationPermission();
+            }
+            localStorage.setItem('notificationPermissionRequested', 'true');
+        }, 3000); // Wait 3 seconds after page load
+    }
+}
+
+function loadNotificationSettings() {
+    const savedSettings = localStorage.getItem('notificationSettings');
+    if (savedSettings) {
+        try {
+            const settings = JSON.parse(savedSettings);
+            notificationSettings = { ...notificationSettings, ...settings };
+        } catch (error) {
+            console.error('Error loading notification settings:', error);
+        }
+    }
+}
+
+function saveNotificationSettings() {
+    try {
+        localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+    } catch (error) {
+        console.error('Error saving notification settings:', error);
+    }
+}
+
+// Add flip animation for sunrise/tahajjud/last third card
 function initSunriseTahajjudCard() {
     if (sunriseTahajjudCard) {
+        let currentState = 0; // 0: sunrise, 1: tahajjud, 2: last third
+        
         const flipCard = (e) => {
             if (e) {
                 e.preventDefault();
                 e.stopPropagation();
             }
             
-            console.log('Flipping card, current state:', sunriseTahajjudCard.classList.contains('flipped'));
-            sunriseTahajjudCard.classList.toggle('flipped');
-            console.log('Card flipped to:', sunriseTahajjudCard.classList.contains('flipped') ? 'tahajjud' : 'sunrise');
+            // Cycle through three states: sunrise -> tahajjud -> last third -> sunrise
+            currentState = (currentState + 1) % 3;
+            
+            // Remove all flip classes first
+            sunriseTahajjudCard.classList.remove('flipped', 'second');
+            
+            // Apply appropriate classes based on state
+            if (currentState === 1) {
+                // Tahajjud state
+                sunriseTahajjudCard.classList.add('flipped');
+                console.log('Card flipped to: tahajjud');
+            } else if (currentState === 2) {
+                // Last third state
+                sunriseTahajjudCard.classList.add('flipped', 'second');
+                console.log('Card flipped to: last third');
+            } else {
+                // Sunrise state (default)
+                console.log('Card flipped to: sunrise');
+            }
         };
 
         // Clear any existing listeners
@@ -570,7 +835,7 @@ function initSunriseTahajjudCard() {
             console.log(`Card face ${index} configured for 3D`);
         });
         
-        console.log('Sunrise/Tahajjud card initialization complete');
+        console.log('Sunrise/Tahajjud/Last Third card initialization complete');
     }
 }
 
@@ -615,6 +880,10 @@ function initPWA() {
 function init() {
     // Initialize PWA features first
     initPWA();
+    
+    // Initialize notifications
+    checkAndRequestNotificationPermission();
+    updateNotificationButtonState();
     
     selectedDate = new Date(); // Start with today's date
     updateCurrentTime();
