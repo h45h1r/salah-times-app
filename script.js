@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.log('Notification button found successfully');
         setupNotificationButton();
+        
+        // Update notification button state after DOM is ready and button is available
+        updateNotificationButtonState();
     }
 });
 
@@ -827,13 +830,18 @@ function checkAndRequestNotificationPermission() {
 
 function loadNotificationSettings() {
     const savedSettings = localStorage.getItem('notificationSettings');
+    console.log('Loading notification settings from localStorage:', savedSettings);
+    
     if (savedSettings) {
         try {
             const settings = JSON.parse(savedSettings);
             notificationSettings = { ...notificationSettings, ...settings };
+            console.log('Loaded notification settings:', notificationSettings);
         } catch (error) {
             console.error('Error loading notification settings:', error);
         }
+    } else {
+        console.log('No saved notification settings found, using defaults');
     }
 }
 
@@ -947,13 +955,8 @@ function init() {
     // Initialize PWA features first
     initPWA();
     
-    // Initialize notifications - load settings first, then update button state
+    // Initialize notifications - load settings first
     checkAndRequestNotificationPermission();
-    
-    // Update notification button state after settings are loaded
-    setTimeout(() => {
-        updateNotificationButtonState();
-    }, 100);
     
     selectedDate = new Date(); // Start with today's date
     updateCurrentTime();
