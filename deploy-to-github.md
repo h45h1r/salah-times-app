@@ -32,7 +32,7 @@ git commit -m "Initial commit"
 git branch -M main
 
 # Add remote repository (replace YOUR_USERNAME with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/salah-times-app.git
+git remote add origin https://github.com/h45h1r/salah-times-app.git
 
 # Push to GitHub
 git push -u origin main
