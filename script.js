@@ -191,7 +191,7 @@ async function fetchPrayerTimes(date) {
             // Update the prayer times first
             updatePrayerTimes(formattedData);
 
-            // Always keep next prayer showing today's data regardless of selected date
+            // Always update next prayer with today's data for current time context
             const today = new Date();
             if (isSameDay(selectedDate, today)) {
                 // If viewing today, update next prayer with current data
@@ -371,8 +371,6 @@ function updatePrayerTimes(data) {
 // Calculate and update next prayer (always uses today's data)
 function updateNextPrayer(data) {
     const now = new Date();
-
-    // Rest of the function for today's date
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
     const prayers = [
@@ -383,11 +381,34 @@ function updateNextPrayer(data) {
         { name: 'Isha', time: convertToMinutes(data.isha), icon: 'bedtime' }
     ];
 
-    let nextPrayer = prayers.find(prayer => prayer.time > currentTime);
+    let nextPrayer = null;
 
+    // First, check if any prayer has passed within the last 30 minutes
+    for (let prayer of prayers) {
+        const prayerTime = new Date(now);
+        const hours = Math.floor(prayer.time / 60);
+        const minutes = prayer.time % 60;
+        prayerTime.setHours(hours);
+        prayerTime.setMinutes(minutes);
+        prayerTime.setSeconds(0);
+        
+        const diff = prayerTime - now;
+        
+        // If prayer time has passed within the last 30 minutes, use this prayer
+        if (diff < 0 && diff > -30 * 60 * 1000) {
+            nextPrayer = prayer;
+            break;
+        }
+    }
+
+    // If no prayer has passed within 30 minutes, find the next prayer
     if (!nextPrayer) {
-        nextPrayer = { ...prayers[0], time: prayers[0].time };
-        nextPrayer.isTomorrow = true;
+        nextPrayer = prayers.find(prayer => prayer.time > currentTime);
+        
+        if (!nextPrayer) {
+            nextPrayer = { ...prayers[0], time: prayers[0].time };
+            nextPrayer.isTomorrow = true;
+        }
     }
 
     // Update next prayer display
@@ -430,7 +451,6 @@ function convertToMinutes(timeStr) {
 
 // Start countdown timer (always for today's prayers)
 function startCountdown(nextPrayer) {
-
     // Clear any existing countdown
     if (window.countdownInterval) {
         clearInterval(window.countdownInterval);
@@ -438,7 +458,6 @@ function startCountdown(nextPrayer) {
 
     function updateDisplay() {
         const now = new Date();
-
         const prayerTime = new Date(now);
 
         // Convert prayer time from minutes to hours and minutes
@@ -455,21 +474,30 @@ function startCountdown(nextPrayer) {
 
         const diff = prayerTime - now;
 
-        if (diff < 0) {
-            // Time has passed, refresh prayer times
+        // If prayer time has passed within the last 30 minutes, show +time
+        if (diff < 0 && diff > -30 * 60 * 1000) {
+            // Prayer time has passed but within 30 minutes
+            const totalSecondsPassed = Math.floor(Math.abs(diff) / 1000);
+            const hoursPassed = Math.floor(totalSecondsPassed / 3600);
+            const minutesPassed = Math.floor((totalSecondsPassed % 3600) / 60);
+            const secondsPassed = totalSecondsPassed % 60;
+            
+            // Show +hours:minutes:seconds (e.g., +00:09:23) for consistency
+            countdownTimer.textContent = `+${String(hoursPassed).padStart(2, '0')}:${String(minutesPassed).padStart(2, '0')}:${String(secondsPassed).padStart(2, '0')}`;
+        } else if (diff < -30 * 60 * 1000) {
+            // More than 30 minutes have passed, refresh prayer times to get next prayer
             fetchPrayerTimes(new Date());
             return;
+        } else if (diff >= 0) {
+            // Prayer time is in the future, show countdown
+            // Calculate hours, minutes, seconds
+            const hours_remaining = Math.floor(diff / (1000 * 60 * 60));
+            const minutes_remaining = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds_remaining = Math.floor((diff % (1000 * 60)) / 1000);
+
+            // Update display with - prefix for countdown
+            countdownTimer.textContent = `-${String(hours_remaining).padStart(2, '0')}:${String(minutes_remaining).padStart(2, '0')}:${String(seconds_remaining).padStart(2, '0')}`;
         }
-
-        // Calculate hours, minutes, seconds
-        const hours_remaining = Math.floor(diff / (1000 * 60 * 60));
-        const minutes_remaining = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds_remaining = Math.floor((diff % (1000 * 60)) / 1000);
-
-        // Update display
-        countdownTimer.textContent = `-${String(hours_remaining).padStart(2, '0')}:${String(minutes_remaining).padStart(2, '0')}:${String(seconds_remaining).padStart(2, '0')}`;
-
-
     }
 
     // Update immediately
