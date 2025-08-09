@@ -254,72 +254,106 @@ async function fetchPrayerTimes(date) {
     const year = date.getFullYear();
     const formattedDate = `${year}-${month}-${day}`;
 
-    const apiKey = 'cde641ff-cdde-4d25-8a62-4ec8cabc7f57';
-    const url = `https://www.londonprayertimes.com/api/times/?format=json&key=${apiKey}&date=${formattedDate}&24hours=true`;
-
-    try {
-        console.log('[PWA] Fetching prayer times for:', formattedDate);
-        const response = await fetch(url, {
-            method: 'GET',
-            mode: 'cors',
-            cache: 'no-cache', // Force fresh data for prayer times
-            credentials: 'omit'
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-
-        if (data) {
-            console.log('[PWA] Prayer times loaded successfully');
-            // Update Gregorian date
-            gregorianDate.textContent = date.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-
-            // Fetch and display Islamic date
-            await fetchIslamicDate(date);
-
-            // Format the data
-            const formattedData = {
+    // Try multiple API sources for better reliability
+    const apis = [
+        {
+            name: 'London Prayer Times',
+            url: `https://www.londonprayertimes.com/api/times/?format=json&key=cde641ff-cdde-4d25-8a62-4ec8cabc7f57&date=${formattedDate}&24hours=true`,
+            transform: (data) => ({
                 fajr: data.fajr,
                 dhuhr: data.dhuhr,
                 asr: data.asr,
                 maghrib: data.magrib,
                 isha: data.isha
-            };
-
-            // Update the prayer times first
-            updatePrayerTimes(formattedData);
-
-            // Always update next prayer with today's data for current time context
-            const today = new Date();
-            if (isSameDay(selectedDate, today)) {
-                // If viewing today, update next prayer with current data
-                updateNextPrayer(formattedData);
-                
-                // Schedule notifications for today's prayers
-                schedulePrayerNotifications(formattedData);
-            } else {
-                // If viewing another day, fetch today's data for next prayer box
-                fetchTodaysPrayerTimesForNextPrayer();
-            }
-
-            updateTodayButtonVisibility();
+            }),
+            check: (data) => data && data.fajr && data.dhuhr && data.asr && data.magrib && data.isha
+        },
+        {
+            name: 'Aladhan API',
+            url: `https://api.aladhan.com/v1/timings/${formattedDate}?latitude=51.5074&longitude=-0.1278&method=2`,
+            transform: (data) => {
+                const timings = data.data.timings;
+                return {
+                    fajr: timings.Fajr,
+                    dhuhr: timings.Dhuhr,
+                    asr: timings.Asr,
+                    maghrib: timings.Maghrib,
+                    isha: timings.Isha
+                };
+            },
+            check: (data) => data && data.data && data.data.timings
         }
-    } catch (error) {
-        console.error('Error fetching prayer times:', error);
-        Object.values(prayerTimes).forEach(element => {
-            element.textContent = 'Error';
-        });
-        nextPrayerName.textContent = 'Error';
-        countdownTimer.textContent = '--:--:--';
+    ];
+
+    for (const api of apis) {
+        try {
+            console.log(`[PWA] Trying ${api.name} for:`, formattedDate);
+            const response = await fetch(api.url, {
+                method: 'GET',
+                mode: 'cors',
+                cache: 'no-cache',
+                credentials: 'omit'
+            });
+            
+            if (!response.ok) {
+                console.log(`[PWA] ${api.name} failed with status:`, response.status);
+                continue;
+            }
+            
+            const data = await response.json();
+            
+            // Check if data is valid using API-specific check function
+            const isValid = api.check ? api.check(data) : data;
+            
+            if (isValid) {
+                console.log(`[PWA] ${api.name} loaded successfully`);
+                
+                // Update Gregorian date
+                gregorianDate.textContent = date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                // Fetch and display Islamic date
+                await fetchIslamicDate(date);
+
+                // Format the data using the API-specific transform
+                const formattedData = api.transform(data);
+
+                // Update the prayer times first
+                updatePrayerTimes(formattedData);
+
+                // Always update next prayer with today's data for current time context
+                const today = new Date();
+                if (isSameDay(selectedDate, today)) {
+                    // If viewing today, update next prayer with current data
+                    updateNextPrayer(formattedData);
+                    
+                    // Schedule notifications for today's prayers
+                    schedulePrayerNotifications(formattedData);
+                } else {
+                    // If viewing another day, fetch today's data for next prayer box
+                    fetchTodaysPrayerTimesForNextPrayer();
+                }
+
+                updateTodayButtonVisibility();
+                return; // Success, exit the function
+            }
+        } catch (error) {
+            console.error(`Error with ${api.name}:`, error);
+            continue; // Try next API
+        }
     }
+
+    // If all APIs fail, show error
+    console.error('All prayer time APIs failed');
+    Object.values(prayerTimes).forEach(element => {
+        element.textContent = 'Error';
+    });
+    nextPrayerName.textContent = 'Error';
+    countdownTimer.textContent = '--:--:--';
 }
 
 // Helper function to convert time to 24-hour format
