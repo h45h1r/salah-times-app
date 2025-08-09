@@ -415,8 +415,26 @@ function updateNextPrayer(data) {
     const nextPrayerElement = document.querySelector('.next-prayer');
     nextPrayerName.textContent = nextPrayer.name;
 
-    // Update prayer-specific styles and icon
-    nextPrayerElement.className = `next-prayer ${nextPrayer.name.toLowerCase()}`;
+    // Update prayer-specific styles and icon based on current time
+    const currentHour = now.getHours();
+    let timeBasedClass = '';
+    
+    // Determine background color based on current time
+    if (currentHour >= 20 || currentHour < 6) {
+        // Night time (8 PM - 6 AM) - use night theme
+        timeBasedClass = 'night';
+    } else if (currentHour >= 6 && currentHour < 12) {
+        // Morning (6 AM - 12 PM) - use morning theme
+        timeBasedClass = 'morning';
+    } else if (currentHour >= 12 && currentHour < 17) {
+        // Afternoon (12 PM - 5 PM) - use afternoon theme
+        timeBasedClass = 'afternoon';
+    } else {
+        // Evening (5 PM - 8 PM) - use evening theme
+        timeBasedClass = 'evening';
+    }
+    
+    nextPrayerElement.className = `next-prayer ${timeBasedClass}`;
     const iconElement = document.querySelector('.next-prayer-icon i');
     iconElement.className = 'material-symbols-rounded';
     iconElement.textContent = nextPrayer.icon;
