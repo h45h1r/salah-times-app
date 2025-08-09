@@ -452,34 +452,10 @@ function calculateTahajjudTime(maghribTime, ishaTime, fajrTime) {
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
-// Calculate Last Third of the Night time (midnight time)
-function calculateLastThirdTime(maghribTime, fajrTime) {
-    // Convert both times to minutes from midnight
-    const maghribMinutes = convertToMinutes(maghribTime);
-    let fajrMinutes = convertToMinutes(fajrTime);
-    
-    // If Fajr is after midnight, add 24 hours to Maghrib if necessary
-    if (fajrMinutes <= maghribMinutes) {
-        fajrMinutes += 24 * 60;
-    }
-    
-    // Find total night duration = Fajr - Maghrib
-    const totalNightDuration = fajrMinutes - maghribMinutes;
-    
-    // Calculate last third start time = Maghrib + (2/3 * total night duration)
-    let lastThirdMinutes = maghribMinutes + (2/3 * totalNightDuration);
-    
-    // Handle day rollover for display
-    if (lastThirdMinutes >= 24 * 60) {
-        lastThirdMinutes -= 24 * 60;
-    }
-    
-    // Convert back to HH:MM format in 24-hour time, rounded to nearest minute
-    const roundedMinutes = Math.round(lastThirdMinutes);
-    const hours = Math.floor(roundedMinutes / 60);
-    const mins = roundedMinutes % 60;
-    
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+// Calculate Midnight time (12:00 AM)
+function calculateMidnightTime() {
+    // Midnight is always 00:00 (12:00 AM)
+    return "00:00";
 }
 
 // Update prayer times display
@@ -506,9 +482,9 @@ function updatePrayerTimes(data) {
         tahajjudTimeElement.textContent = tahajjudTime;
     }
     
-    if (data.maghrib && data.fajr && lastThirdTimeElement) {
-        const lastThirdTime = calculateLastThirdTime(data.maghrib, data.fajr);
-        lastThirdTimeElement.textContent = lastThirdTime;
+    if (lastThirdTimeElement) {
+        const midnightTime = calculateMidnightTime();
+        lastThirdTimeElement.textContent = midnightTime;
     }
 }
 
@@ -856,7 +832,7 @@ function saveNotificationSettings() {
 // Add flip animation for sunrise/tahajjud/last third card
 function initSunriseTahajjudCard() {
     if (sunriseTahajjudCard) {
-        let currentState = 0; // 0: sunrise, 1: tahajjud, 2: last third
+        let currentState = 0; // 0: sunrise, 1: tahajjud, 2: midnight
         
         const flipCard = (e) => {
             if (e) {
@@ -864,7 +840,7 @@ function initSunriseTahajjudCard() {
                 e.stopPropagation();
             }
             
-            // Cycle through three states: sunrise -> tahajjud -> last third -> sunrise
+            // Cycle through three states: sunrise -> tahajjud -> midnight -> sunrise
             currentState = (currentState + 1) % 3;
             
             // Remove all flip classes first
@@ -876,9 +852,9 @@ function initSunriseTahajjudCard() {
                 sunriseTahajjudCard.classList.add('flipped');
                 console.log('Card flipped to: tahajjud');
             } else if (currentState === 2) {
-                // Last third state
+                // Midnight state
                 sunriseTahajjudCard.classList.add('flipped', 'second');
-                console.log('Card flipped to: last third');
+                console.log('Card flipped to: midnight');
             } else {
                 // Sunrise state (default)
                 console.log('Card flipped to: sunrise');

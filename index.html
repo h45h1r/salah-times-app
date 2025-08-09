@@ -351,7 +351,7 @@
             box-shadow: 0 15px 40px rgba(20, 30, 48, 0.4);
         }
 
-        /* Prayer Times Grid - Now 2x3 including sunrise/tahajjud */
+        /* Prayer Times Grid - Now 2x3 including sunrise/tahajjud/midnight */
         .prayer-times-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -399,7 +399,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Sunrise/Tahajjud Card - Premium and appealing design */
+        /* Sunrise/Tahajjud/Midnight Card - Premium and appealing design */
         .sunrise-tahajjud-card {
             background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
             border: 1px solid rgba(0, 188, 212, 0.2);
@@ -776,7 +776,7 @@
                 </div>
                 <div class="prayer-time" id="fajr-time">--:--</div>
             </div>
-            <!-- Sunrise/Tahajjud Card integrated into grid -->
+            <!-- Sunrise/Tahajjud/Midnight Card integrated into grid -->
             <div class="sunrise-tahajjud-card" id="sunriseTahajjudCard">
                 <div class="card-face card-front">
                     <div class="time-info">
@@ -799,8 +799,8 @@
                 <div class="card-face card-third">
                     <div class="time-info">
                         <div class="time-label">
-                            <i class="fas fa-star"></i>
-                            <span>Last Third</span>
+                            <i class="fas fa-moon"></i>
+                            <span>Midnight</span>
                         </div>
                         <div class="time-value" id="last-third-time">--:--</div>
                     </div>
