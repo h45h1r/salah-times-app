@@ -452,10 +452,32 @@ function calculateTahajjudTime(maghribTime, ishaTime, fajrTime) {
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
-// Calculate Midnight time (12:00 AM)
-function calculateMidnightTime() {
-    // Midnight is always 00:00 (12:00 AM)
-    return "00:00";
+// Calculate Midnight time (halfway between Maghrib and Fajr)
+function calculateMidnightTime(maghribTime, fajrTime) {
+    // Convert both times to minutes from midnight
+    const maghribMinutes = convertToMinutes(maghribTime);
+    let fajrMinutes = convertToMinutes(fajrTime);
+    
+    // If Fajr is after midnight, add 24 hours to Fajr if necessary
+    if (fajrMinutes <= maghribMinutes) {
+        fajrMinutes += 24 * 60;
+    }
+    
+    // Calculate the midpoint between Maghrib and Fajr
+    const totalNightDuration = fajrMinutes - maghribMinutes;
+    const midnightMinutes = maghribMinutes + (totalNightDuration / 2);
+    
+    // Handle day rollover for display
+    if (midnightMinutes >= 24 * 60) {
+        midnightMinutes -= 24 * 60;
+    }
+    
+    // Convert back to HH:MM format in 24-hour time, rounded to nearest minute
+    const roundedMinutes = Math.round(midnightMinutes);
+    const hours = Math.floor(roundedMinutes / 60);
+    const mins = roundedMinutes % 60;
+    
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
 // Update prayer times display
@@ -482,8 +504,8 @@ function updatePrayerTimes(data) {
         tahajjudTimeElement.textContent = tahajjudTime;
     }
     
-    if (lastThirdTimeElement) {
-        const midnightTime = calculateMidnightTime();
+    if (data.maghrib && data.fajr && lastThirdTimeElement) {
+        const midnightTime = calculateMidnightTime(data.maghrib, data.fajr);
         lastThirdTimeElement.textContent = midnightTime;
     }
 }
