@@ -86,10 +86,46 @@
             color: #a0a0a0;
         }
 
+        .time-notification-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .current-time {
             font-size: 14px;
             color: #00bcd4;
             font-weight: 500;
+        }
+
+        .notification-btn-small {
+            background: rgba(0, 188, 212, 0.1);
+            border: 1px solid rgba(0, 188, 212, 0.3);
+            color: #00bcd4;
+            padding: 6px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .notification-btn-small:hover {
+            background: rgba(0, 188, 212, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .notification-btn-small.enabled {
+            background: rgba(0, 188, 212, 0.3);
+            border-color: #00bcd4;
+        }
+
+        .notification-btn-small.enabled i {
+            color: #00bcd4;
         }
 
         .date-section {
@@ -526,6 +562,17 @@
                 padding: 8px;
             }
 
+            .notification-btn-small {
+                width: 24px;
+                height: 24px;
+                padding: 4px;
+                font-size: 10px;
+            }
+
+            .time-notification-container {
+                gap: 6px;
+            }
+
             .app-container {
                 padding: 0;
                 padding-bottom: 90px;
@@ -678,12 +725,15 @@
                     <i class="fas fa-map-marker-alt"></i>
                     <span>London, UK</span>
                 </div>
-                <div class="current-time">07:30 AM</div>
+                <div class="time-notification-container">
+                    <div class="current-time">07:30 AM</div>
+                    <button id="notificationBtn" class="notification-btn-small" title="Enable notifications">
+                        <i class="fas fa-bell-slash"></i>
+                    </button>
+                </div>
             </div>
             <div class="notification-controls">
-                <button id="notificationBtn" class="notification-btn" title="Enable notifications">
-                    <i class="fas fa-bell-slash"></i>
-                </button>
+                <!-- Notification button moved to time container -->
             </div>
             <div class="date-section">
                 <div class="date-navigation">

@@ -1,3 +1,8 @@
+console.log('Script.js loaded and running...');
+
+// Test if button exists immediately
+console.log('Button exists immediately?', !!document.getElementById('notificationBtn'));
+
 const apiKey = 'cde641ff-cdde-4d25-8a62-4ec8cabc7f57'; // Replace with your API key
 let currentDate = new Date();
 let selectedDate = new Date();
@@ -46,7 +51,20 @@ const prayerCards = {
 const todayBtn = document.getElementById('todayBtn');
 
 // Add notification button functionality
-const notificationBtn = document.getElementById('notificationBtn');
+let notificationBtn;
+
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', () => {
+    notificationBtn = document.getElementById('notificationBtn');
+    
+    // Check if notification button was found
+    if (!notificationBtn) {
+        console.error('Notification button not found! Check if the element exists in the DOM.');
+    } else {
+        console.log('Notification button found successfully');
+        setupNotificationButton();
+    }
+});
 
 // Function to update today button visibility
 function updateTodayButtonVisibility() {
@@ -60,34 +78,72 @@ function updateTodayButtonVisibility() {
 
 // Function to update notification button state
 function updateNotificationButtonState() {
+    // Check if notification button exists
+    if (!notificationBtn) {
+        console.error('Cannot update notification button state: button not found');
+        return;
+    }
+    
+    // Update notification permission from browser state
+    notificationPermission = Notification.permission;
+    
+    console.log('Updating notification button state:', {
+        settingsEnabled: notificationSettings.enabled,
+        permission: notificationPermission,
+        browserPermission: Notification.permission
+    });
+    
     if (notificationSettings.enabled && notificationPermission === 'granted') {
         notificationBtn.classList.add('enabled');
         notificationBtn.innerHTML = '<i class="fas fa-bell"></i>';
         notificationBtn.title = 'Notifications enabled';
+        console.log('Notification button set to enabled (bell icon)');
     } else {
         notificationBtn.classList.remove('enabled');
         notificationBtn.innerHTML = '<i class="fas fa-bell-slash"></i>';
         notificationBtn.title = 'Enable notifications';
+        console.log('Notification button set to disabled (bell-slash icon)');
     }
 }
 
 // Add click handler for notification button
-notificationBtn.addEventListener('click', async () => {
-    if (notificationSettings.enabled && notificationPermission === 'granted') {
-        // Disable notifications
-        notificationSettings.enabled = false;
-        updateNotificationButtonState();
-        saveNotificationSettings();
-        showNotification('Salah Times', 'Notifications disabled');
+function setupNotificationButton() {
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', async () => {
+            console.log('Notification button clicked');
+            console.log('Current state before click:', {
+                settingsEnabled: notificationSettings.enabled,
+                permission: notificationPermission,
+                browserPermission: Notification.permission
+            });
+            
+            if (notificationSettings.enabled && notificationPermission === 'granted') {
+                // Disable notifications
+                console.log('Disabling notifications');
+                notificationSettings.enabled = false;
+                updateNotificationButtonState();
+                saveNotificationSettings();
+                showNotification('Salah Times', 'Notifications disabled');
+            } else {
+                // Enable notifications
+                console.log('Enabling notifications - requesting permission...');
+                const granted = await requestNotificationPermission();
+                console.log('Permission request returned:', granted);
+                if (granted) {
+                    console.log('Permission granted, updating button state...');
+                    updateNotificationButtonState();
+                    saveNotificationSettings();
+                } else {
+                    console.log('Permission denied or failed, updating button state...');
+                    updateNotificationButtonState();
+                }
+            }
+        });
+        console.log('Notification button click handler added');
     } else {
-        // Enable notifications
-        const granted = await requestNotificationPermission();
-        if (granted) {
-            updateNotificationButtonState();
-            saveNotificationSettings();
-        }
+        console.error('Cannot add click handler: notification button not found');
     }
-});
+}
 
 // Add click handler for today button
 todayBtn.addEventListener('click', () => {
@@ -619,26 +675,34 @@ function isSameDay(date1, date2) {
 
 // Notification Functions
 async function requestNotificationPermission() {
+    console.log('requestNotificationPermission called');
+    console.log('Current Notification.permission:', Notification.permission);
+    
     if (!('Notification' in window)) {
         console.log('This browser does not support notifications');
         return false;
     }
 
     if (Notification.permission === 'granted') {
+        console.log('Permission already granted');
         notificationPermission = 'granted';
         notificationSettings.enabled = true;
         return true;
     }
 
     if (Notification.permission === 'denied') {
+        console.log('Permission already denied');
         notificationPermission = 'denied';
         notificationSettings.enabled = false;
         return false;
     }
 
     // Request permission
+    console.log('Requesting permission from user...');
     try {
         const permission = await Notification.requestPermission();
+        console.log('Permission request result:', permission);
+        
         notificationPermission = permission;
         notificationSettings.enabled = permission === 'granted';
         
@@ -646,8 +710,10 @@ async function requestNotificationPermission() {
             console.log('Notification permission granted');
             showNotification('Salah Times', 'Notifications enabled! You will be notified before each prayer time.');
             updateNotificationButtonState();
+            saveNotificationSettings();
         } else {
             console.log('Notification permission denied');
+            updateNotificationButtonState();
         }
         
         return permission === 'granted';
@@ -881,9 +947,13 @@ function init() {
     // Initialize PWA features first
     initPWA();
     
-    // Initialize notifications
+    // Initialize notifications - load settings first, then update button state
     checkAndRequestNotificationPermission();
-    updateNotificationButtonState();
+    
+    // Update notification button state after settings are loaded
+    setTimeout(() => {
+        updateNotificationButtonState();
+    }, 100);
     
     selectedDate = new Date(); // Start with today's date
     updateCurrentTime();
@@ -911,5 +981,27 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Test function to manually trigger notification button state update
+function testNotificationButton() {
+    console.log('Testing notification button state update...');
+    console.log('Current notification settings:', notificationSettings);
+    console.log('Current notification permission:', notificationPermission);
+    console.log('Browser notification permission:', Notification.permission);
+    
+    // Force update the button state
+    updateNotificationButtonState();
+    
+    // Test clicking the button
+    if (notificationBtn) {
+        console.log('Simulating button click...');
+        notificationBtn.click();
+    } else {
+        console.log('Notification button not available for testing');
+    }
+}
+
 // Start the app
 init();
+
+// Add test function to window for debugging
+window.testNotificationButton = testNotificationButton;
